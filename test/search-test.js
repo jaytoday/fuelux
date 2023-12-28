@@ -2,75 +2,94 @@
 /*global start:false, stop:false ok:false, equal:false, notEqual:false, deepEqual:false*/
 /*global notDeepEqual:false, strictEqual:false, notStrictEqual:false, raises:false*/
 
-require(['jquery', 'fuelux/search'], function($) {
+define( function ( require ) {
+	var QUnit = require('qunit');
+	var $ = require( "jquery" );
+	var html = require( "text!test/markup/search-markup.html!strip" );
 
-	module("Fuel UX search");
+	require( "bootstrap" );
+	require( "fuelux/search" );
 
-	test("should be defined on jquery object", function () {
-		ok($(document.body).search, 'search method is defined');
-	});
+	QUnit.module( "Fuel UX Search" );
 
-	test("should return element", function () {
-		ok($(document.body).search()[0] === document.body, 'document.body returned');
-	});
+	QUnit.test( "should be defined on jquery object", function( assert ) {
+		assert.ok( $().search, "search method is defined" );
+	} );
 
-	test("should ignore empty search", function () {
-		var searchHTML = '<div><input><button><i class="icon-search"></i></button></div>';
+	QUnit.test( "should return element", function( assert ) {
+		var $search = $( html );
+		assert.ok( $search.search() === $search, "search has been initialized" );
+	} );
 
-		var $search = $(searchHTML).search();
+	QUnit.test( "should ignore empty search", function( assert ) {
+		var $search = $( html );
 
-		$search.find('button').click();
+		$search.search();
+		$search.find( "button" ).click();
 
-		equal($search.find('i').attr('class'), 'icon-search', 'search icon has not changed');
-	});
+		assert.equal( $search.find( ".glyphicon" ).attr( "class" ), "glyphicon glyphicon-search", "search icon has not changed" );
+	} );
 
-	test("should process valid search", function () {
-		var searchHTML = '<div><input><button><i></i></button></div>';
-		var searchText = '';
+	QUnit.test( "should ignore disabled button click", function( assert ) {
+		var $search = $( html );
 
-		var $search = $(searchHTML).search().on('searched', function (e, text) { searchText = text; });
+		$search.find( "button" ).addClass( "disabled" );
+		$search.search();
 
-		$search.find('input').val('search text');
-		$search.find('button').click();
+		$search.find( "input" ).val( "search text" );
+		$search.find( "button" ).click();
 
-		equal($search.find('i').attr('class'), 'icon-remove', 'search icon has changed');
-		equal(searchText, 'search text', 'search text was provided in event');
-	});
+		assert.equal( $search.find( ".glyphicon" ).attr( "class" ), "glyphicon glyphicon-search", "search icon has not changed" );
+	} );
 
-	test("should allow search to be cleared", function () {
-		var searchHTML = '<div><input><button><i></i></button></div>';
+	QUnit.test( "should process valid search", function( assert ) {
+		var $search = $( html );
+		var searchText = "";
+
+		$search.search().on( "searched.fu.search", function( e, text ) { searchText = text; } );
+
+		$search.find( "input" ).val( "search text" );
+		$search.find( "button" ).click();
+
+		assert.equal( $search.find( ".glyphicon" ).attr( "class" ), "glyphicon glyphicon-remove", "search icon has changed" );
+		assert.equal( searchText, "search text", "search text was provided in event" );
+	} );
+
+	QUnit.test( "should allow search to be cleared", function( assert ) {
+		var $search = $( html );
 		var clearedEventFired = false;
 
-		var $search = $(searchHTML).search().on('cleared', function (e, text) { clearedEventFired = true; });
+		$search.search().on( "cleared.fu.search", function( e, text ) { clearedEventFired = true; } );
 
-		$search.find('input').val('search text');
-		$search.find('button').click();
-		$search.find('button').click();
+		$search.find( "input" ).val( "search text" );
+		$search.find( "button" ).click();
+		$search.find( "button" ).click();
 
-		equal($search.find('i').attr('class'), 'icon-search', 'search icon has returned');
-		equal($search.find('input').val(), '', 'search text has been cleared');
-		equal(clearedEventFired, true, 'cleared event was fired');
-	});
+		assert.equal( $search.find( ".glyphicon" ).attr( "class" ), "glyphicon glyphicon-search", "search icon has returned" );
+		assert.equal( $search.find( "input" ).val(), "", "search text has been cleared" );
+		assert.equal( clearedEventFired, true, "cleared event was fired" );
+	} );
 
-	test("should process sequential searches", function () {
-		var searchHTML = '<div><input><button><i></i></button></div>';
-		var searchText = '';
+	QUnit.test( "should correctly respond to disable and enable methods", function( assert ) {
+		var $search = $( html );
 
-		var $search = $(searchHTML).search().on('searched', function (e, text) { searchText = text; });
+		$search.search();
+		$search.search( "disable" );
 
-		$search.find('input').val('search text');
-		$search.find('button').click();
+		assert.equal( $search.find( "input" ).attr( "disabled" ), "disabled", "input was disabled" );
+		assert.equal( $search.find( "button" ).hasClass( "disabled" ), true, "button was disabled" );
 
-		equal($search.find('i').attr('class'), 'icon-remove', 'search icon has changed');
-		equal(searchText, 'search text', 'search text was provided in event');
+		$search.search( "enable" );
 
-		$search.find('input').val('search text 2').keyup();
-		equal($search.find('i').attr('class'), 'icon-search', 'search icon has returned');
+		assert.equal( $search.find( "input" ).attr( "disabled" ), undefined, "input was enabled" );
+		assert.equal( $search.find( "button" ).hasClass( "disabled" ), false, "button was enabled" );
+	} );
 
-		$search.find('button').click();
+	QUnit.test( "should destroy control", function( assert ) {
+		var $el = $( html ).search();
 
-		equal($search.find('i').attr('class'), 'icon-remove', 'search icon has changed');
-		equal(searchText, 'search text 2', 'search text was provided in event');
-	});
+		assert.equal( typeof( $el.search( "destroy" ) ), "string", "returns string (markup)" );
+		assert.equal( $el.parent().length, false, "control has been removed from DOM" );
+	} );
 
-});
+} );
